@@ -47,14 +47,14 @@ Whether you're a developer exploring AI in finance, a quant researcher, or just 
 
 Select the LLM that powers your analysis directly from the dashboard — no restart needed:
 
-| Model | Best For |
-|---|---|
-| `llama3.1` *(Recommended)* | Best balance of speed and accuracy |
-| `llama3` | Faster, slightly lighter |
-| `mistral` | Strong reasoning, good for complex signals |
-| `gemma` | Lightweight, great for low-resource machines |
-| `phi3` | Ultra-fast, minimal resource usage |
-| `custom` | Any Ollama-compatible model you have pulled |
+| Model | Type | Best For |
+|---|---|---|
+| `llama3.1` *(Recommended)* | Local (Ollama) | Best balance of speed and accuracy for financial analysis |
+| `llama3` | Local (Ollama) | Faster inference, great for frequent monitoring cycles |
+| `phi3` *(Lightweight)* | Local (Ollama) | Low-resource machines, quick signal generation |
+| `tinyllama` *(Ultra-Light)* | Local (Ollama) | Minimal RAM usage, fastest response times |
+| `gpt-4o` | Cloud (OpenAI) | Highest accuracy, requires OpenAI API key |
+| `gemini-2.0-flash` | Cloud (Google) | Fast and capable, requires Gemini API key |
 
 > Switch models on the fly from the **Analyze Ticker** panel — the agent will use the newly selected model from the very next cycle.
 
