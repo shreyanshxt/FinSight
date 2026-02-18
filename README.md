@@ -41,8 +41,22 @@ Whether you're a developer exploring AI in finance, a quant researcher, or just 
 - **Local LLM Integration**: Powered by [Ollama](https://ollama.com), supporting models like `llama3.1`, `mistral`, `gemma`, and more — all running **100% locally** with no data sent to external AI APIs.
 - **Intelligent Signal Generation**: The AI synthesizes technical indicators, price history, and live news to produce clear `BUY`, `SELL`, or `HOLD` signals with detailed reasoning.
 - **News Sentiment Analysis**: Fetches and incorporates the latest financial news for each ticker into the analysis context.
-- **Multi-Model Support**: Seamlessly switch between different LLM models from the dashboard without restarting the server.
 - **Structured Reasoning**: Every decision comes with a human-readable explanation of *why* the signal was generated.
+
+### 🔄 Choose Your Analysis Model
+
+Select the LLM that powers your analysis directly from the dashboard — no restart needed:
+
+| Model | Best For |
+|---|---|
+| `llama3.1` *(Recommended)* | Best balance of speed and accuracy |
+| `llama3` | Faster, slightly lighter |
+| `mistral` | Strong reasoning, good for complex signals |
+| `gemma` | Lightweight, great for low-resource machines |
+| `phi3` | Ultra-fast, minimal resource usage |
+| `custom` | Any Ollama-compatible model you have pulled |
+
+> Switch models on the fly from the **Analyze Ticker** panel — the agent will use the newly selected model from the very next cycle.
 
 </details>
 
@@ -76,8 +90,17 @@ Whether you're a developer exploring AI in finance, a quant researcher, or just 
 - **Autonomous Trade Execution**: When enabled, the agent automatically places orders based on its analysis — no human intervention needed.
 - **Smart Capital Allocation**: Uses 20% of available agent cash per BUY trade for diversified exposure.
 - **Holdings-Aware Selling**: SELL signals correctly liquidate the agent's actual position in that ticker, not a cash-calculated quantity.
-- **Agent Capital Isolation**: A dedicated sub-portfolio tracks the agent's allocated capital separately from the main account.
 - **Configurable via UI**: Enable/disable autonomous mode and set agent capital allocation directly from the dashboard.
+
+### 💰 Agent Capital & Isolated Portfolio
+
+FinSight lets you allocate a **fixed budget** to the AI agent, completely isolated from your main account:
+
+1. **Set a Capital Limit**: Enter a dollar amount (e.g., `$1,000`) in the **Agent Capital** field on the dashboard and click **SET**.
+2. **Isolated Sub-Portfolio**: The agent operates within its own sub-portfolio — it can only spend the capital you've allocated to it.
+3. **Separate P&L Tracking**: Switch to the **Agent Only** tab in Portfolio & Account to see *only* the agent's positions, P&L, and equity — completely separate from your manual trades.
+4. **Real-Time Agent Equity**: The agent's equity, cash balance, and unrealized P&L update live as market prices change.
+5. **No Overspending**: If the agent runs out of its allocated capital, it will automatically skip trades rather than dipping into your main account funds.
 
 </details>
 
@@ -86,9 +109,23 @@ Whether you're a developer exploring AI in finance, a quant researcher, or just 
 
 - **Alpaca Paper Trading**: Connects to [Alpaca Markets](https://alpaca.markets) for realistic paper trading with real market prices and order management.
 - **Local Simulation Mode**: A fully self-contained simulation engine that activates automatically when Alpaca keys are absent — no external dependencies needed.
-- **Strategy Engine**: Supports multiple trading strategies: `market`, `momentum`, `mean_reversion`, `breakout`, and `ai_optimized`.
 - **Order Management**: View and track pending orders in real-time.
 - **Trade History Log**: Every trade (manual or agent-executed) is logged with timestamp, price, quantity, and source.
+
+### 📐 6 Trading Strategies
+
+When placing a manual trade, choose from **6 distinct strategies** — each with its own entry logic:
+
+| # | Strategy | Logic |
+|---|---|---|
+| 1 | **Market** | Executes immediately at the current market price. No conditions. |
+| 2 | **Momentum** | Buys when RSI > 50 AND MACD > 0 (bullish momentum confirmed). Sells when both are bearish. |
+| 3 | **Mean Reversion** | Buys when RSI < 35 (oversold). Sells when RSI > 65 (overbought). |
+| 4 | **Breakout** | Buys when price is above the Bollinger Band midline (upward breakout). Sells below it. |
+| 5 | **AI Optimized** | Runs a full LLM analysis first and only executes if the AI signal matches your intended direction. |
+| 6 | **Manual Override** | Bypasses all strategy checks and executes the trade unconditionally. |
+
+> Trades that don't meet the strategy's conditions are **rejected with a reason** — protecting you from bad entries.
 
 </details>
 
