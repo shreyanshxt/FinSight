@@ -27,9 +27,11 @@ class FinancialAnalyst:
         system_prompt = """You are a seasoned Wall Street technical analyst.
         Analyze the provided stock data. You have access to tools to fetch more context if needed.
         Output a strictly formatted JSON response.
-        The JSON must have two keys: 
+        The JSON must have the following keys:
         1. "signal": One of "BUY", "SELL", or "HOLD".
-        2. "reasoning": A concise paragraph explaining why based on the indicators and any news found.
+        2. "risk_score": A number from 1 to 10 (1=Safe, 10=Extreme volatility/danger).
+        3. "stop_loss": A suggested price level to exit the trade if it goes against us (based on support levels).
+        4. "reasoning": A concise paragraph explaining why based on the indicators, risk profile, and news.
         Do not include any other text."""
 
         messages = [
@@ -98,7 +100,7 @@ class FinancialAnalyst:
                 content = assistant_message.content
 
             if not content or "{" not in content:
-                 messages.append({"role": "user", "content": "Analyze and provide a JSON response with 'signal' and 'reasoning' keys only."})
+                 messages.append({"role": "user", "content": "Analyze and provide a JSON response with 'signal', 'risk_score', 'stop_loss', and 'reasoning' keys."})
                  final_res = self.provider.chat_completion(messages=messages)
                  content = final_res.choices[0].message.content
 
@@ -110,6 +112,13 @@ class FinancialAnalyst:
                     json_str = content[start:end]
                     parsed = json.loads(json_str)
                     if "signal" in parsed:
+                        # Ensure numeric types for risk and SL
+                        if "risk_score" in parsed:
+                            try: parsed["risk_score"] = float(parsed["risk_score"])
+                            except: parsed["risk_score"] = 5
+                        if "stop_loss" in parsed:
+                            try: parsed["stop_loss"] = float(parsed["stop_loss"])
+                            except: parsed["stop_loss"] = 0
                         return parsed
                 
                 raise ValueError("JSON missing signal key")

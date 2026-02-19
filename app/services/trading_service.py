@@ -1,6 +1,7 @@
 import os
 import json
 import fcntl
+import threading
 import alpaca_trade_api as tradeapi
 from datetime import datetime
 from contextlib import contextmanager
@@ -10,12 +11,15 @@ SIMULATED_PORTFOLIO = "simulated_portfolio.json"
 PERFORMANCE_HISTORY = "performance_history.json"
 TRADE_HISTORY = "trade_history.json"
 
+PRICE_REFRESH_INTERVAL = 60  # seconds
+
 class TradingService:
     def __init__(self):
         load_dotenv()
         self.api_key = os.getenv("ALPACA_API_KEY")
         self.secret_key = os.getenv("ALPACA_SECRET_KEY")
         self.base_url = "https://paper-api.alpaca.markets" # Paper trading by default
+        self._last_price_refresh = None  # throttle tracker
         
         if self.api_key and self.secret_key:
             self.api = tradeapi.REST(self.api_key, self.secret_key, self.base_url, api_version='v2')
@@ -102,11 +106,24 @@ class TradingService:
                 # Release lock
                 fcntl.flock(f, fcntl.LOCK_UN)
 
+    def _maybe_refresh_prices(self):
+        """Kick off a background price refresh at most once per PRICE_REFRESH_INTERVAL seconds.
+        Returns immediately — never blocks the caller."""
+        now = datetime.now()
+        if (
+            self._last_price_refresh is None
+            or (now - self._last_price_refresh).total_seconds() >= PRICE_REFRESH_INTERVAL
+        ):
+            # Mark the time now so concurrent requests don't all spawn threads
+            self._last_price_refresh = now
+            t = threading.Thread(target=self._refresh_sim_prices, daemon=True)
+            t.start()
+
     def get_account_info(self):
         self._ensure_sim_portfolio() # Ensure we can at least read agent metadata
-        
-        # Always refresh simulated prices so agent P&L updates from latest market data
-        self._refresh_sim_prices()
+
+        # Throttled price refresh — at most once per 60s
+        self._maybe_refresh_prices()
 
         with self._locked_portfolio("r") as state:
             agent_portfolio = state.get("agent_portfolio", {})
@@ -123,7 +140,6 @@ class TradingService:
             })
             return acc
         
-        self._refresh_sim_prices()
         with self._locked_portfolio("r") as state:
             acc = type('SimpleNamespace', (object,), state)
             # Attach agent info
@@ -135,20 +151,38 @@ class TradingService:
             alp_positions = self.api.list_positions()
             # Normalize for frontend consistency
             normalized = []
+            
+            # Get agent metadata for risk info
+            with self._locked_portfolio("r") as state:
+                ag_positions = state.get("agent_portfolio", {}).get("positions", {})
+
             for p in alp_positions:
+                ag_meta = ag_positions.get(p.symbol, {})
                 normalized.append(type('SimpleNamespace', (object,), {
                     "symbol": p.symbol,
                     "qty": int(p.qty),
                     "avg_entry_price": float(p.avg_entry_price),
                     "current_price": float(p.current_price),
                     "unrealized_pl": float(p.unrealized_pl),
-                    "unrealized_plpc": float(p.unrealized_plpc)
+                    "unrealized_plpc": float(p.unrealized_plpc),
+                    "stop_loss": ag_meta.get("stop_loss", 0),
+                    "risk_score": ag_meta.get("risk_score", 0)
                 }))
             return normalized
         
         self._refresh_sim_prices()
         with self._locked_portfolio("r") as state:
-            return [type('SimpleNamespace', (object,), {**v, "symbol": k}) for k, v in state["positions"].items()]
+            ag_positions = state.get("agent_portfolio", {}).get("positions", {})
+            results = []
+            for k, v in state["positions"].items():
+                ag_meta = ag_positions.get(k, {})
+                results.append(type('SimpleNamespace', (object,), {
+                    **v, 
+                    "symbol": k,
+                    "stop_loss": v.get("stop_loss", ag_meta.get("stop_loss", 0)),
+                    "risk_score": v.get("risk_score", ag_meta.get("risk_score", 0))
+                }))
+            return results
 
     def get_orders(self):
         """Returns pending orders."""
@@ -167,7 +201,7 @@ class TradingService:
                 return []
         return []
 
-    def place_order(self, symbol: str, qty: int, side: str, order_type: str = 'market', time_in_force: str = 'gtc', source="manual"):
+    def place_order(self, symbol: str, qty: int, side: str, order_type: str = 'market', time_in_force: str = 'gtc', source="manual", stop_loss=0, risk_score=0):
         """
         Places an order on Alpaca or Local Simulation.
         """
@@ -201,36 +235,7 @@ class TradingService:
                 self._log_trade(trade_entry)
 
                 # --- SYNC AGENT METADATA IF ALPACA AGENT TRADE ---
-                if source == "agent":
-                    with self._locked_portfolio("r+") as state:
-                        ag_port = state.get("agent_portfolio")
-                        if ag_port:
-                            cost = current_price * qty
-                            if side.lower() == "buy":
-                                ag_port["cash"] -= cost
-                                p = ag_port["positions"].get(symbol, {"qty": 0, "avg_entry_price": 0})
-                                n_q = p["qty"] + qty
-                                n_av = ((p["qty"] * p["avg_entry_price"]) + cost) / n_q
-                                ag_port["positions"][symbol] = {
-                                    "qty": n_q,
-                                    "avg_entry_price": n_av,
-                                    "current_price": current_price,
-                                    "unrealized_pl": 0.0
-                                }
-                            else: # sell
-                                p = ag_port["positions"].get(symbol)
-                                if p and p["qty"] >= qty:
-                                    ag_port["cash"] += cost
-                                    p["qty"] -= qty
-                                    if p["qty"] == 0:
-                                        del ag_port["positions"][symbol]
-                                    else:
-                                        p["current_price"] = current_price
-                                        p["unrealized_pl"] = (current_price - p["avg_entry_price"]) * p["qty"]
-                            
-                            # Update agent equity
-                            ap_val = sum(pos["qty"] * pos.get("current_price", 0) for pos in ag_port["positions"].values())
-                            ag_port["equity"] = ag_port["cash"] + ap_val
+                # This is now handled by _execute_sim_trade which is called at the end
                 
                 # Fetch account to log performance
                 acc = self.api.get_account()
@@ -241,9 +246,9 @@ class TradingService:
                 return {"error": str(e)}
         
         # Local Simulation Logic
-        return self._execute_sim_trade(symbol, qty, side, source=source)
+        return self._execute_sim_trade(symbol, qty, side, source=source, stop_loss=stop_loss, risk_score=risk_score)
 
-    def _execute_sim_trade(self, symbol, qty, side, source="manual"):
+    def _execute_sim_trade(self, symbol, qty, side, source="manual", stop_loss=0, risk_score=0):
         from app.services.data_fetcher import MarketDataService
         mkt = MarketDataService()
         data = mkt.get_market_data(symbol)
@@ -304,7 +309,9 @@ class TradingService:
                             "qty": n_q,
                             "avg_entry_price": n_av,
                             "current_price": price,
-                            "unrealized_pl": (price - n_av) * n_q
+                            "unrealized_pl": (price - n_av) * n_q,
+                            "stop_loss": stop_loss,
+                            "risk_score": risk_score
                         }
                     else: # sell
                         # Assuming agent only sells what it bought. 

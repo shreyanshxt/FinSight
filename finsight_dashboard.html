@@ -935,6 +935,34 @@
       letter-spacing: 0.05em;
     }
 
+    .risk-badge {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      font-weight: bold;
+      padding: 2px 6px;
+      border-radius: 3px;
+      text-transform: uppercase;
+    }
+
+    .risk-low {
+      background: rgba(0, 255, 136, 0.1);
+      color: var(--accent2);
+      border: 1px solid rgba(0, 255, 136, 0.3);
+    }
+
+    .risk-med {
+      background: rgba(255, 165, 2, 0.1);
+      color: var(--warn);
+      border: 1px solid rgba(255, 165, 2, 0.3);
+    }
+
+    .risk-high {
+      background: rgba(255, 71, 87, 0.1);
+      color: var(--danger);
+      border: 1px solid rgba(255, 71, 87, 0.3);
+    }
+
+
     /* Responsive */
     @media (max-width: 900px) {
       main {
@@ -1230,13 +1258,15 @@
                 <th>QTY</th>
                 <th>AVG PRICE</th>
                 <th>CURR PRICE</th>
+                <th>STOP LOSS</th>
+                <th>RISK</th>
                 <th>P&L ($)</th>
                 <th>P&L (%)</th>
               </tr>
             </thead>
             <tbody id="positionList">
               <tr>
-                <td colspan="6" style="text-align:center; color:var(--muted); padding:30px">Loading positions...</td>
+                <td colspan="8" style="text-align:center; color:var(--muted); padding:30px">Loading positions...</td>
               </tr>
             </tbody>
           </table>
@@ -1591,52 +1621,7 @@
       });
     }
 
-    async function loadAccount() {
-      const equityEl = document.getElementById('accEquity');
-      const bpEl = document.getElementById('accBuyingPower');
-      const cashEl = document.getElementById('accCash');
-      const list = document.getElementById('positionList');
 
-      try {
-        const res = await fetch(`${API_BASE}/account`);
-        const data = await res.json();
-
-        // Show/hide simulation badge
-        document.getElementById('simModeBadge').style.display =
-          (data.status === 'active' && data.mode === 'simulation') ? 'inline-block' : 'none';
-
-        if (data.status === 'inactive') {
-          list.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--danger); padding:30px">Trading Service Inactive (Check API Keys)</td></tr>`;
-          return;
-        }
-
-        equityEl.textContent = `$${Number(data.equity).toLocaleString()}`;
-        bpEl.textContent = `$${Number(data.buying_power).toLocaleString()}`;
-        cashEl.textContent = `$${Number(data.cash).toLocaleString()}`;
-
-        if (!data.positions || data.positions.length === 0) {
-          list.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--muted); padding:30px">No open positions.</td></tr>`;
-        } else {
-          list.innerHTML = data.positions.map(p => {
-            const pl = parseFloat(p.unrealized_pl);
-            const plpc = parseFloat(p.unrealized_plpc) * 100;
-            const cls = pl >= 0 ? 'pl-up' : 'pl-down';
-            return `
-              <tr>
-                <td style="font-weight:bold">${p.symbol}</td>
-                <td>${p.qty}</td>
-                <td>$${Number(p.avg_entry_price).toFixed(2)}</td>
-                <td>$${Number(p.current_price).toFixed(2)}</td>
-                <td class="${cls}">${pl >= 0 ? '+' : ''}$${pl.toFixed(2)}</td>
-                <td class="${cls}">${pl >= 0 ? '+' : ''}${plpc.toFixed(2)}%</td>
-              </tr>
-            `;
-          }).join('');
-        }
-      } catch (e) {
-        list.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--danger); padding:30px">Error fetching account data: ${e.message}</td></tr>`;
-      }
-    }
 
     // ── QUICK TICKER ─────────────────────────────────────────────
     function quickTicker(symbol) {
@@ -2043,7 +2028,7 @@
         (data.status === 'active' && data.mode === 'simulation') ? 'inline-block' : 'none';
 
       if (data.status === 'inactive') {
-        list.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--danger); padding:30px">Trading Service Inactive (Check API Keys)</td></tr>`;
+        list.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--danger); padding:30px">Trading Service Inactive (Check API Keys)</td></tr>`;
         return;
       }
 
@@ -2090,20 +2075,34 @@
       renderTopPerformers(topPerformers);
 
       if (!displayData.positions || displayData.positions.length === 0) {
-        list.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--muted); padding:30px">No open positions.</td></tr>`;
+        list.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--muted); padding:30px">No open positions.</td></tr>`;
       } else {
         list.innerHTML = displayData.positions.map(p => {
-          const pl = parseFloat(p.unrealized_pl);
+          const pl = parseFloat(p.unrealized_pl || 0);
           const plpc = parseFloat(p.unrealized_plpc || 0) * 100;
           const cls = pl >= 0 ? 'pl-up' : 'pl-down';
+
+          // Detect if it's a pending trade in Agent view (no price info yet)
+          const isPending = !p.current_price || p.current_price === 0;
+
+          const sl = p.stop_loss && p.stop_loss > 0 ? `$${p.stop_loss.toFixed(2)}` : '—';
+          const risk = p.risk_score || 0;
+          let riskCls = 'risk-low';
+          if (risk > 7) riskCls = 'risk-high';
+          else if (risk > 4) riskCls = 'risk-med';
+
+          const riskLabel = risk > 0 ? `${risk}/10` : '—';
+
           return `
               <tr>
                 <td style="font-weight:bold">${p.symbol}</td>
                 <td>${p.qty}</td>
-                <td>$${Number(p.avg_entry_price).toFixed(2)}</td>
-                <td>$${Number(p.current_price).toFixed(2)}</td>
-                <td class="${cls}">${pl >= 0 ? '+' : ''}$${pl.toFixed(2)}</td>
-                <td class="${cls}">${pl >= 0 ? '+' : ''}${plpc.toFixed(2)}%</td>
+                <td>${isPending ? 'PENDING' : '$' + Number(p.avg_entry_price).toFixed(2)}</td>
+                <td>${isPending ? '—' : '$' + Number(p.current_price).toFixed(2)}</td>
+                <td style="font-family: var(--mono); font-size: 0.75rem">${sl}</td>
+                <td><span class="risk-badge ${riskCls}">${riskLabel}</span></td>
+                <td class="${isPending ? '' : cls}">${isPending ? '—' : (pl >= 0 ? '+' : '') + '$' + pl.toFixed(2)}</td>
+                <td class="${isPending ? '' : cls}">${isPending ? '—' : (pl >= 0 ? '+' : '') + plpc.toFixed(2) + '%'}</td>
               </tr>
             `;
         }).join('');

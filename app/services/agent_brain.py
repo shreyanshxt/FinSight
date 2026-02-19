@@ -45,8 +45,35 @@ class AutonomousAgent:
         analysis = self.analyst.analyze(ticker, data)
         signal = analysis.get("signal", "HOLD")
         reasoning = analysis.get("reasoning", "")
+        risk_score = analysis.get("risk_score", 5) # Default to medium risk
+        stop_loss = analysis.get("stop_loss", 0)
         
-        self.notifier.notify_analysis(ticker, signal, reasoning)
+        self.notifier.notify_analysis(ticker, signal, f"Risk: {risk_score}/10 | SL: {stop_loss} | {reasoning}")
+
+        # 2.1 Proactive Stop-Loss Check (if we have a position)
+        try:
+            account = self.trading_service.get_account_info()
+            if isinstance(account, dict):
+                ag_port = account.get("agent_portfolio", {})
+            else:
+                ag_port = getattr(account, "agent_portfolio", {})
+            
+            pos = ag_port.get("positions", {}).get(ticker, {})
+            if pos and pos.get("qty", 0) > 0:
+                current_price = data.get("price_data", {}).get("current_price", 0)
+                stored_sl = pos.get("stop_loss", 0)
+                
+                # Use the tighter/safer stop loss between current analysis and stored SL
+                # If stored_sl is 0, we use analysis stop_loss.
+                active_sl = max(stop_loss, stored_sl) if stop_loss > 0 and stored_sl > 0 else (stop_loss or stored_sl)
+
+                if active_sl > 0 and current_price <= active_sl:
+                    print(f"⚠️ STOP LOSS TRIGGERED for {ticker}: Price {current_price} <= SL {active_sl} (Analysis SL: {stop_loss}, Stored SL: {stored_sl})")
+                    self.notifier.notify(f"PANIC SELL: Stop-loss breached for {ticker} at {current_price} (SL: {active_sl})", level="error")
+                    self.trading_service.place_order(ticker, pos["qty"], "sell", source="agent")
+                    return analysis
+        except Exception as e:
+            print(f"Error in stop-loss check: {e}")
 
         # 3. Execute Trade (if signal Buy/Sell and logic permits)
         if signal in ["BUY", "SELL"]:
@@ -55,11 +82,10 @@ class AutonomousAgent:
                 return analysis
 
             side = signal.lower()
-            print(f"Autonomous decision: {signal} {ticker}")
+            print(f"Autonomous decision: {signal} {ticker} (Risk: {risk_score}/10)")
             # Calculate quantity based on Agent's available capital
             try:
                 account = self.trading_service.get_account_info()
-                # Check if it's a dict or object (TradingService returns namespace wrapper usually)
                 if isinstance(account, dict):
                     ag_port = account.get("agent_portfolio", {})
                 else:
@@ -70,15 +96,21 @@ class AutonomousAgent:
                 
                 if current_price > 0:
                     if side == "buy":
-                        # Use up to 20% of available cash per trade for better utilization, or at least 1 share
-                        allocation_per_trade = agent_cash * 0.20
+                        # RISK-AWARE SIZING: 
+                        # Base is 20% of cash. We scale it by (11 - risk_score) / 10.
+                        # High risk (10) -> (11-10)/10 = 0.1x multiplier (2% of cash)
+                        # Low risk (1) -> (11-1)/10 = 1.0x multiplier (20% of cash)
+                        risk_multiplier = max(0.1, (11 - risk_score) / 10)
+                        base_allocation = agent_cash * 0.20
+                        allocation_per_trade = base_allocation * risk_multiplier
+                        
                         qty = int(allocation_per_trade / current_price)
                         
                         if qty < 1 and agent_cash >= current_price:
                             qty = 1
                         
                         if qty < 1:
-                            print(f"Insufficient agent funds for {ticker}. Cash: ${agent_cash:.2f}, Price: ${current_price:.2f}")
+                            print(f"Insufficient agent funds for {ticker}. Cash: ${agent_cash:.2f}, Allocation: ${allocation_per_trade:.2f}")
                             return analysis
                     else: # sell
                         # Get held quantity for this ticker
@@ -96,14 +128,15 @@ class AutonomousAgent:
                 print(f"Error calculating quantity for {ticker}: {e}. Defaulting to 1.")
                 qty = 1 
             
-            print(f"Agent Attempting to {side.upper()} {qty} shares of {ticker}...")
-            result = self.trading_service.place_order(ticker, qty, side, source="agent")
+            print(f"Agent Attempting to {side.upper()} {qty} shares of {ticker} with SL {stop_loss} and Risk {risk_score}...")
+            # We pass the stop_loss to place_order so it can be persisted
+            result = self.trading_service.place_order(ticker, qty, side, source="agent", stop_loss=stop_loss, risk_score=risk_score)
             
             if "error" in result:
                 print(f"Trade failed/rejected for {ticker}: {result['error']}")
             else:
                 mode_str = " (SIMULATED)" if result.get("mode") == "simulation" else ""
-                self.notifier.notify_trade(ticker, side, qty, f"{reasoning}{mode_str}")
+                self.notifier.notify_trade(ticker, side, qty, f"Risk {risk_score}/10 | SL {stop_loss} | {reasoning}{mode_str}")
                 print(f"Trade Successful for {ticker}: {result}")
         
         return analysis

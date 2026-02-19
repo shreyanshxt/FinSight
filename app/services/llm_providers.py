@@ -34,8 +34,9 @@ class OllamaProvider(BaseLLMProvider):
             response = self.client.chat.completions.create(**params)
             return response
         except Exception as e:
-            # Fallback if tools not supported
-            if "support tools" in str(e).lower() or "tool_choice" in str(e).lower():
+            # Fallback if tools not supported or 400 Bad Request (often caused by tools/tool_choice on some versions)
+            err_str = str(e).lower()
+            if "support tools" in err_str or "tool_choice" in err_str or "400" in err_str:
                 return self.client.chat.completions.create(model=self.model, messages=messages)
             raise e
 

@@ -75,7 +75,9 @@ def get_account():
                     "avg_entry_price": p.avg_entry_price,
                     "current_price": p.current_price,
                     "unrealized_pl": p.unrealized_pl,
-                    "unrealized_plpc": getattr(p, "unrealized_plpc", 0)
+                    "unrealized_plpc": getattr(p, "unrealized_plpc", 0),
+                    "stop_loss": getattr(p, "stop_loss", 0),
+                    "risk_score": getattr(p, "risk_score", 0)
                 } for p in pos
             ],
             "pending_orders": orders
