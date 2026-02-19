@@ -15,8 +15,11 @@ class AutonomousAgent:
         self.analyst = FinancialAnalyst(model=self.model)
         self.trading_service = TradingService()
         self.notifier = Notifier()
-        self.watchlist = ["AAPL", "NVDA", "BTC-USD", "TSLA"]
-        self.interval = 30 # 5 minutes
+        
+        # Priority: Config > Defaults
+        self.watchlist = self.config.get("watchlist", ["AAPL", "NVDA", "BTC-USD", "TSLA"])
+        # interval_minutes in config converts to seconds
+        self.interval = self.config.get("interval_minutes", 5) * 60 
 
     def _load_config(self):
         try:

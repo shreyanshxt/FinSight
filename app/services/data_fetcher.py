@@ -26,7 +26,10 @@ class MarketDataService:
                 av_data = self._get_alpha_vantage_data(ticker)
                 data["indicators"].update(av_data)
             except Exception as e:
-                print(f"AlphaVantage Error: {e}")
+                if "rate limit" in str(e).lower() or "thank you for using alpha vantage" in str(e).lower():
+                    print(f"INFO: AlphaVantage rate limit reached for {ticker}. Using local indicator fallbacks.")
+                else:
+                    print(f"AlphaVantage Error for {ticker}: {e}")
                 data["errors"] = [str(e)]
                 
         # Calculate local indicators if AV failed or as supplement
