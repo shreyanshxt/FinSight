@@ -17,9 +17,9 @@
 
 ## 📸 Dashboard Preview
 
-| 🔍 Live Analysis View | 💼 Portfolio & Account View |
-|:---:|:---:|
-| ![Analysis View](assets/analysis_view.png) | ![Portfolio View](assets/portfolio_view.png) |
+| 🔍 Live Analysis View | 💼 Portfolio & Account View | 📈 Performance & History |
+|:---:|:---:|:---:|
+| ![Analysis View](assets/analysis_details.png) | ![Portfolio View](assets/portfolio_overview.png) | ![History View](assets/trade_history.png) |
 
 ---
 
@@ -30,6 +30,28 @@
 Whether you're a developer exploring AI in finance, a quant researcher, or just curious about autonomous agents, FinSight provides a complete, production-ready platform to experiment with.
 
 > **⚠️ Disclaimer**: FinSight is designed for **paper trading and educational purposes only**. It does not constitute financial advice. Always do your own research before making real investment decisions.
+
+---
+
+## 🧠 The Brain: AI-Driven Synthesis Algorithm
+
+FinSight doesn't rely on hardcoded "if-then" rules. Instead, it uses a multi-layered **Synthesis Algorithm** to make decisions:
+
+### 1. Data Acquisition (The "Eyes")
+Every cycle, the agent gathers a full context of the stock:
+- **Price Action**: Tick-by-tick monitoring of current price and volatility.
+- **Technical Indicators**: RSI(14), MACD, and multiple Moving Averages (SMA/EMA).
+- **Sentiment Feed**: Real-time fetching of the latest news headlines for the specific ticker.
+
+### 2. Intelligent Analysis (The "Brain")
+The system feeds this data to a local LLM (via Ollama) which acts as a seasoned technical analyst:
+- **Holistic Evaluation**: It weighs technicals against news. (e.g., *RSI might be oversold, but if news is bearish, the AI may HOLD instead of BUY*).
+- **Risk Scoring**: Generates a **Risk Score (1-10)** based on current market conditions and volatility.
+- **Support Discovery**: Identifies key historical support levels to suggest a **Stop-Loss**.
+
+### 3. Execution & Safety (The "Shield")
+- **Dynamic Sizing**: Uses the Risk Score to calculate position size. Low-risk setups get larger capital allocation.
+- **Persistent Protection**: The agent monitors positions 24/7 and executes defensive exits if the stop-loss is triggered.
 
 ---
 
