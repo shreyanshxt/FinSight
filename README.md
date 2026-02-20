@@ -329,7 +329,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 <div align="center">
 
-**Built with ❤️ by [Shreyansh Singh](https://github.com/shreyanshxt)**
+**Built by [Shreyansh Singh](https://github.com/shreyanshxt)**
 
 ⭐ Star this repo if you found it useful!
 
