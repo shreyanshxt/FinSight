@@ -24,6 +24,9 @@
 | ![Market Status](assets/market_status.png) | ![Performance](assets/trade_history.png) |
 
 ---
+Dashboard Live view
+ 
+---
 
 ##  About
 
