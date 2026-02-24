@@ -170,16 +170,7 @@ When placing a manual trade, choose from **6 distinct strategies** — each with
 > Trades that don't meet the strategy's conditions are **rejected with a reason** — protecting you from bad entries.
 
 </details>
-## 🎯 Why Local LLMs?
 
-FinSight was built with **local, smaller models** (phi3, tinyllama, llama3.1) to prove that you don't need GPT-4 for specialized financial analysis:
-
-- **Lower latency**: Critical for real-time trading decisions
-- **Zero API costs**: Runs entirely locally, no per-token charges
-- **Privacy**: No financial data sent to external APIs
-- **Model flexibility**: Easy to swap models based on accuracy/speed tradeoffs
-
-The architecture demonstrates that smaller models + good prompt engineering + proper context management can match larger models for domain-specific tasks.
 <details>
 <summary><b> Technical Architecture</b></summary>
 
@@ -193,7 +184,18 @@ The architecture demonstrates that smaller models + good prompt engineering + pr
 </details>
 
 ---
+## 🎯 Why Local LLMs?
 
+FinSight was built with **local, smaller models** (phi3, tinyllama, llama3.1) to prove that you don't need GPT-4 for specialized financial analysis:
+
+- **Lower latency**: Critical for real-time trading decisions
+- **Zero API costs**: Runs entirely locally, no per-token charges
+- **Privacy**: No financial data sent to external APIs
+- **Model flexibility**: Easy to swap models based on accuracy/speed tradeoffs
+
+The architecture demonstrates that smaller models + good prompt engineering + proper context management can match larger models for domain-specific tasks.
+
+---
 ##  Tech Stack
 
 | Layer | Technology |
