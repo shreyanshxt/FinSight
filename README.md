@@ -27,7 +27,7 @@
 ---
 ##  Dashboard Live View
 
-**[Watch the live dashboard video]([https://drive.google.com/file/d/VIDEO_ID/view?usp=sharing](https://drive.google.com/drive/folders/1_7tskphrXOOlqrHIPorgOtUBYRRDlLLw?usp=drive_link))**
+**[Watch the live dashboard video](https://drive.google.com/drive/folders/1_7tskphrXOOlqrHIPorgOtUBYRRDlLLw?usp=drive_link)**
 ---
 ---
 
