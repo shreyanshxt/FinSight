@@ -61,7 +61,11 @@ The system feeds this data to a local LLM (via Ollama) which acts as a seasoned 
 - **Market Hours Awareness**: Automatically detects US market hours and pauses execution for equity assets during off-hours, while remaining active for 24/7 markets like Crypto.
 
 ---
-
+> **Built with local LLMs (Ollama)** - Designed for model efficiency and deployment at scale
+> 
+> **Autonomous agent** that continuously monitors markets, analyzes with LLMs, and executes trades
+> 
+> **Production-ready**: FastAPI backend, Docker deployment, real-time dashboard, 16-ticker watchlist
 ##  Features
 
 <details>
@@ -166,7 +170,16 @@ When placing a manual trade, choose from **6 distinct strategies** — each with
 > Trades that don't meet the strategy's conditions are **rejected with a reason** — protecting you from bad entries.
 
 </details>
+## 🎯 Why Local LLMs?
 
+FinSight was built with **local, smaller models** (phi3, tinyllama, llama3.1) to prove that you don't need GPT-4 for specialized financial analysis:
+
+- **Lower latency**: Critical for real-time trading decisions
+- **Zero API costs**: Runs entirely locally, no per-token charges
+- **Privacy**: No financial data sent to external APIs
+- **Model flexibility**: Easy to swap models based on accuracy/speed tradeoffs
+
+The architecture demonstrates that smaller models + good prompt engineering + proper context management can match larger models for domain-specific tasks.
 <details>
 <summary><b> Technical Architecture</b></summary>
 
